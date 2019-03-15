@@ -2,15 +2,45 @@
 
 local driver = require "luasql.sqlite3"
 
-if #arg < 1 then
-	error("Search word required!")
+local function usage(stream)
+	stream:write("Usage: ", arg[0], " [-p] <word>\n")
 end
-local search_word = table.concat(arg, " ")
+
+for i = 1, #arg do
+	if arg[i]:sub(1, 1) == "-" then
+		if arg[i]:sub(2) == "p" then
+			use_stdout = true
+		else
+			usage(io.stderr)
+			os.exit(false)
+		end
+	else
+		search_word = arg[i]
+	end
+end
+
+if not search_word then
+	usage(io.stderr);
+	os.exit(false)
+end
+
+local function dirname(path)
+	return path:match("^(.*)/.+$") or "."
+end
+
+-- Calculate the installation prefix at runtime, in order to locate
+-- the installed data base.
+-- This way, we don't have to preprocess the script during installation
+local PREFIX = dirname(arg[0]).."/.."
+
+local database = PREFIX.."/share/openrussian/openrussian-sqlite3.db"
+if not io.open(database) then database = "openrussian-sqlite3.db" end
+
 local out_stream
 local lang = "en"
 
 local env = assert(driver.sqlite3())
-local con = assert(env:connect("openrussian-sqlite3.db"))
+local con = assert(env:connect(database))
 
 -- Turns a character followed by apostroph into a combined
 -- accented character.
@@ -173,9 +203,8 @@ function format.other(word_id, accented)
 end
 
 local cur = assert(con:execute(string.format([[
-	SELECT bare_id, accented, type, words.id AS word_id
-	FROM bares JOIN words ON bares.id = bare_id
-	WHERE bare = "%s"
+	SELECT accented, type, words.id AS word_id
+	FROM words WHERE bare = "%s"
 ]], search_word)))
 local row = cur:fetch({}, "a")
 cur:close()
@@ -183,7 +212,7 @@ cur:close()
 if not row then
 	io.stderr:write('Word "', search_word, '" not found!\n')
 else
-	local bare_id, word_id = row.bare_id, row.word_id
+	local word_id = row.word_id
 	local word_type = row.type or "other"
 	-- FIXME: Some words (e.g. personal pronouns) apparently do not
 	-- come with accents!?
@@ -191,8 +220,7 @@ else
 
 	-- Open stream only now, after no more messages have to be written to
 	-- stdout/stderr.
-	out_stream = io.stdout
-	--out_stream = io.popen("man /dev/stdin", "w")
+	out_stream = assert(use_stdout and io.stdout or io.popen("man /dev/stdin", "w"))
 
 	out_stream:write('.\\" t\n',
 	                 '.TH "', search_word, '" "', word_type, '"\n')
@@ -231,8 +259,8 @@ else
 	cur = assert(con:execute(string.format([[
 		SELECT ru, start, length, tl
 		FROM sentences_words JOIN sentences ON sentence_id = sentences.id
-		WHERE bare_id = %d AND lang = "%s"
-	]], bare_id, lang)))
+		WHERE word_id = %d AND lang = "%s"
+	]], word_id, lang)))
 	row = cur:fetch({}, "a")
 	if row then
 		out_stream:write('.SH EXAMPLES\n')
