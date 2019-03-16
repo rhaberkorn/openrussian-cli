@@ -202,9 +202,12 @@ function format.other(word_id, accented)
 	                 map_accented(accented), '\n')
 end
 
+-- NOTE: This lets SQL strip the accent char from the input, which
+-- allows users to cut and paste from generated output while we don't
+-- have to deal with Unicode in Lua.
 local cur = assert(con:execute(string.format([[
 	SELECT accented, type, words.id AS word_id
-	FROM words WHERE bare = "%s"
+	FROM words WHERE bare = REPLACE("%s", CHAR(0x0301), "")
 ]], search_word)))
 local row = cur:fetch({}, "a")
 cur:close()
