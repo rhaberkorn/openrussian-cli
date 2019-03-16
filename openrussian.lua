@@ -44,8 +44,10 @@ local con = assert(env:connect(database))
 
 -- Turns a character followed by apostroph into a combined
 -- accented character.
+-- NOTE: This encodes the accent (u0301) in bytes, so it can be
+-- used for printing to stdout or into Troff code.
 local function map_accented(str)
-	return (str:gsub("'", "\\[u0301]"))
+	return (str:gsub("'", "\xCC\x81"))
 end
 -- FIXME: This does not work for tables since tbl will count the
 -- combined character as two. Theoretically, Groff has composite characters
@@ -202,91 +204,128 @@ function format.other(word_id, accented)
 	                 map_accented(accented), '\n')
 end
 
+function get_translations(word_id)
+	local ret = {}
+
+	-- FIXME: Fetch other translations if primary
+	-- language is not available
+	local cur = assert(con:execute(string.format([[
+		SELECT tl FROM translations
+		WHERE word_id = %d AND lang = "%s"
+	]], word_id, lang)))
+	local row = cur:fetch({}, "a")
+	while row do
+		table.insert(ret, row.tl)
+		row = cur:fetch({}, "a")
+	end
+	cur:close()
+
+	return ret
+end
+
 -- NOTE: This lets SQL strip the accent char from the input, which
 -- allows users to cut and paste from generated output while we don't
 -- have to deal with Unicode in Lua.
 local cur = assert(con:execute(string.format([[
-	SELECT accented, type, words.id AS word_id
+	SELECT bare, accented, type, words.id AS word_id
 	FROM words WHERE bare = REPLACE("%s", CHAR(0x0301), "")
 ]], search_word)))
-local row = cur:fetch({}, "a")
+
+local rows = {}
+local row
+repeat
+	row = cur:fetch({}, "a")
+	table.insert(rows, row)
+until not row
+
 cur:close()
 
-if not row then
+if #rows == 0 then
 	io.stderr:write('Word "', search_word, '" not found!\n')
-else
-	local word_id = row.word_id
-	local word_type = row.type or "other"
-	-- FIXME: Some words (e.g. personal pronouns) apparently do not
-	-- come with accents!?
-	local word_accented = row.accented or search_word
-
-	-- Open stream only now, after no more messages have to be written to
-	-- stdout/stderr.
-	out_stream = assert(use_stdout and io.stdout or io.popen("man /dev/stdin", "w"))
-
-	out_stream:write('.\\" t\n',
-	                 '.TH "', search_word, '" "', word_type, '"\n')
-
-	--
-	-- Word-specific sections
-	--
-	format[word_type](row.word_id, word_accented)
-
-	--
-	-- Generic sections
-	--
-	-- FIXME: Print other translations if primary
-	-- language is not available
-	cur = assert(con:execute(string.format([[
-		SELECT tl FROM translations
-		WHERE word_id = %d AND lang = "%s"
-	]], word_id, lang)))
-	row = cur:fetch({}, "a")
-	if row then
-		out_stream:write('.SH TRANSLATION\n')
-
-		repeat
-			out_stream:write(row.tl)
-			row = cur:fetch({}, "a")
-			if row then out_stream:write(', ') end
-		until not row
-
-		out_stream:write('\n')
-	end
-	cur:close()
-
-	--
-	-- NOTE: There can be many exampes, so print them last.
-	--
-	cur = assert(con:execute(string.format([[
-		SELECT ru, start, length, tl
-		FROM sentences_words JOIN sentences ON sentence_id = sentences.id
-		WHERE word_id = %d AND lang = "%s"
-	]], word_id, lang)))
-	row = cur:fetch({}, "a")
-	if row then
-		out_stream:write('.SH EXAMPLES\n')
-
-		repeat
-			-- FIXME: Highlight search word in sentences.
-			-- start/length are apparently in characters
-			-- instead of bytes.
-			--[[
-			local ru_hl = row.ru:sub(1, row.start)..'\\fI'..
-			              row.ru:sub(row.start+1, row.start+1+row.length)..'\\fP'..
-			              row.ru:sub(row.start+1+row.length+1)
-			]]
-			out_stream:write('.TP\n',
-			                 map_accented(row.ru), '\n',
-			                 row.tl, '\n')
-			row = cur:fetch({}, "a")
-		until not row
-
-	end
-	cur:close()
+	os.exit(false)
 end
 
+if #rows == 1 then
+	row = rows[1]
+else
+	for i, row in ipairs(rows) do
+		local word_accented = row.accented or row.bare
+		local tl = get_translations(row.word_id)
+
+		io.stdout:write(i, ") ", map_accented(word_accented))
+		if #tl > 0 then io.stdout:write(" (", table.concat(tl, ", "), ")") end
+		io.stdout:write("\n")
+	end
+
+	repeat
+		io.stdout:write("Show [1..", #rows, ", press enter to cancel]? "):flush()
+		local choice = io.stdin:read():lower()
+		if choice == "" or choice == "q" then os.exit() end
+		row = rows[tonumber(choice)]
+	until row
+end
+
+local word_id = row.word_id
+local word_type = row.type or "other"
+-- NOTE: Some words (e.g. personal pronouns) apparently do not
+-- come with accents!?
+local word_accented = row.accented or row.bare
+
+-- Open stream only now, after no more messages have to be written to
+-- stdout/stderr.
+out_stream = assert(use_stdout and io.stdout or io.popen("man /dev/stdin", "w"))
+
+out_stream:write('.\\" t\n',
+                 '.TH "', search_word, '" "', word_type, '"\n')
+
+--
+-- Word-specific sections
+--
+format[word_type](word_id, word_accented)
+
+--
+-- Generic sections
+--
+local tl = get_translations(word_id)
+if #tl > 0 then
+	out_stream:write('.SH TRANSLATION\n',
+	                 table.concat(tl, ', '), '\n')
+end
+
+--
+-- NOTE: There can be many examples, so print them last.
+--
+cur = assert(con:execute(string.format([[
+	SELECT ru, start, length, tl
+	FROM sentences_words JOIN sentences ON sentence_id = sentences.id
+	WHERE word_id = %d AND lang = "%s"
+]], word_id, lang)))
+row = cur:fetch({}, "a")
+if row then
+	out_stream:write('.SH EXAMPLES\n')
+
+	repeat
+		-- FIXME: Highlight search word in sentences.
+		-- start/length are apparently in characters
+		-- instead of bytes.
+		--[[
+		local ru_hl = row.ru:sub(1, row.start)..'\\fI'..
+		              row.ru:sub(row.start+1, row.start+1+row.length)..'\\fP'..
+		              row.ru:sub(row.start+1+row.length+1)
+		]]
+		out_stream:write('.TP\n',
+		                 map_accented(row.ru), '\n',
+		                 row.tl, '\n')
+		row = cur:fetch({}, "a")
+	until not row
+
+end
+cur:close()
+
+--
+-- Cleanup
+-- NOTE: Not strictly necessary, as everything is garbage-collected anyway
+--
 con:close()
 env:close()
 
