@@ -129,28 +129,37 @@ end
 -- FIXME: Apparently, there are entries without declension or empty declension
 -- entries, e.g. kosha4ij.
 -- These should be detected and the entire section should be omitted.
-local function format_declension(tag, decl_id, short_form)
-	local cur = assert(con:execute(string.format([[
-		SELECT * FROM declensions WHERE id = %d
-	]], decl_id)))
-	local row = assert(cur:fetch({}, "a"))
-	cur:close()
+local function format_declensions(...)
+	local decl = {}
 
-	out_stream:write(tag, ';', map_tbl(row.nom or "-"), ';',
-	                 map_tbl(row.gen or "-"), ';',
-	                 map_tbl(row.dat or "-"), ';',
-	                 map_tbl(row.acc or "-"), ';',
-	                 map_tbl(row.inst or "-"), ';',
-	                 map_tbl(row.prep or "-"))
-	if short_form then out_stream:write(';', map_tbl(short_form)) end
-	out_stream:write('\n')
-end
+	for i, decl_id in ipairs{...} do
+		if type(decl_id) == "string" then
+			for _, case in ipairs{"nom", "gen", "dat", "acc", "inst", "prep"} do
+				decl[case] = decl[case] or {}
+				decl[case][i] = map_tbl(decl_id)
+			end
+		else
+			local cur = assert(con:execute(string.format([[
+				SELECT nom, gen, dat, acc, inst, prep FROM declensions WHERE id = %d
+			]], decl_id)))
+			local row = assert(cur:fetch({}, "a"))
+			cur:close()
 
-local function format_dummy_declension(tag, accented)
-	accented = map_tbl(accented)
-	out_stream:write(tag)
-	for _ = 1, 6 do out_stream:write(';', accented) end
-	out_stream:write('\n')
+			for case, val in pairs(row) do
+				decl[case] = decl[case] or {}
+				val = lutf8.gsub(val or '-', "[;,]%(", " (")
+				val = lutf8.gsub(val, "[;,]", ", ")
+				decl[case][i] = map_tbl(val)
+			end
+		end
+	end
+
+	out_stream:write('Nominative;',   table.concat(decl.nom, ';'), '\n')
+	out_stream:write('Genitive;',     table.concat(decl.gen, ';'), '\n')
+	out_stream:write('Dative;',       table.concat(decl.dat, ';'), '\n')
+	out_stream:write('Accusative;',   table.concat(decl.acc, ';'), '\n')
+	out_stream:write('Instrumental;', table.concat(decl.inst, ';'), '\n')
+	out_stream:write('Prepositive;',  table.concat(decl.prep, ';'), '\n')
 end
 
 local format = {} -- formatter functions by word category
@@ -182,29 +191,21 @@ function format.noun(word_id, accented)
 		                 row.partner, '\n')
 	end
 
-	-- FIXME: Rotate this table (only two columns: singular and plural).
-	-- Lines should be short.
 	out_stream:write('.SH DECLENSION\n',
 	                 '.TS\n',
 	                 'allbox,tab(;);\n',
-	                 'L  LB LB LB LB LB LB\n',
-	                 'LB L  L  L  L  L  L.\n',
-	                 ';Nominative;Genitive;Dative;Accusative;Instrumental;Prepositive\n')
-	if row.pl_only == 0 then
-		if row.indeclinable == 1 then
-			format_dummy_declension('Singular', accented)
-		else	                 
-			format_declension('Singular', row.decl_sg_id)
-		end
+	                 'L  LB LB\n',
+	                 'LB L  L.\n',
+	                 ';Singular;Plural\n')
+	if row.indeclinable == 1 then
+		format_declensions(accented, accented)
+	else
+		format_declensions(row.pl_only == 0 and row.decl_sg_id or '-',
+		                   row.sg_only == 0 and row.decl_pl_id or '-')
 	end
-	if row.sg_only == 0 then
-		if row.indeclinable == 1 then
-			format_dummy_declension('Plural', accented)
-		else	                 
-			format_declension('Plural', row.decl_pl_id)
-		end
-	end
-	out_stream:write('.TE\n')
+	-- NOTE: It is unclear why the trailing .sp is necessary
+	out_stream:write('.TE\n',
+	                 '.sp\n')
 end
 
 function format.adjective(word_id, accented)
@@ -220,29 +221,30 @@ function format.adjective(word_id, accented)
 	--out_stream:write('.SH CATEGORY\n',
 	--                 'adjective\n')
 
-	-- FIXME: Rotate this table (columns will be gender+plural).
-	-- Lines should be short.
-	-- FIXME: Short form not always present
 	out_stream:write('.SH DECLENSION\n',
 	                 '.TS\n',
 	                 'allbox,tab(;);\n',
-	                 'L  LB LB LB LB LB LB LB\n',
-	                 'LB L  L  L  L  L  L  L.\n',
-	                 ';Nominative;Genitive;Dative;Accusative;Instrumental;Prepositive;Short\n')
-	format_declension('Male', row.decl_m_id, row.short_m)
-	format_declension('Neutral', row.decl_n_id, row.short_n)
-	format_declension('Female', row.decl_f_id, row.short_f)
-	format_declension('Plural', row.decl_pl_id, row.short_pl)
-	out_stream:write('.TE\n')
+	                 'L  LB LB LB LB\n',
+	                 'LB L  L  L  L.\n',
+	                 ';Male;Neutral;Female;Plural\n')
+	format_declensions(row.decl_m_id, row.decl_n_id, row.decl_f_id, row.decl_pl_id)
+	out_stream:write('Short;',
+	                 map_tbl(row.short_m or '-'), ';',
+	                 map_tbl(row.short_n or '-'), ';',
+	                 map_tbl(row.short_f or '-'), ';',
+	                 map_tbl(row.short_pl or '-'), '\n')
+	-- NOTE: It is unclear why the trailing .sp is necessary
+	out_stream:write('.TE\n',
+	                 '.sp\n')
 
 	if row.comparative and row.comparative ~= "" then
 		out_stream:write('.SH COMPARATIVE\n',
-		                 map_accented(row.comparative), '\n')
+		                 map_accented(lutf8.gsub(row.comparative, "[;,]", ", ")), '\n')
 	end
 
 	if row.superlative and row.superlative ~= "" then
 		out_stream:write('.SH SUPERLATIVE\n',
-		                 map_accented(row.superlative), '\n')
+		                 map_accented(lutf8.gsub(row.superlative, "[;,]", ", ")), '\n')
 	end
 end
 
