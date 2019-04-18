@@ -28,6 +28,14 @@ openrussian-sqlite3.db : openrussian-sql.zip mysql2sqlite postprocess.sql
 	unzip -p $< openrussian.sql | ./mysql2sqlite - | sqlite3 $@
 	sqlite3 $@ -batch <postprocess.sql
 
+# Try to generate all possible pages
+check : openrussian-sqlite3.db openrussian
+	sqlite3 $< 'SELECT bare FROM words WHERE LIKELY(disabled = 0)' | \
+	while read -r bare; do \
+		./openrussian -V -p "$$bare" </dev/null >/dev/null || \
+		echo "Error generating \"$$bare\"" >/dev/stderr; \
+	done
+
 # NOTE: Installation of the Bash completions depends on the Debain bash-completion
 # package being installed or something similar
 install : openrussian openrussian-sqlite3.db openrussian-completion.bash

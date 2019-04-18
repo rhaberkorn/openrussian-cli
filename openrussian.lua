@@ -126,30 +126,27 @@ local function map_tbl(str)
 	return (lutf8.gsub(str, "(.)'", "\\fI%1\\fP"))
 end
 
--- FIXME: Apparently, there are entries without declension or empty declension
--- entries, e.g. kosha4ij.
--- These should be detected and the entire section should be omitted.
 local function format_declensions(...)
 	local decl = {}
 
 	for i, decl_id in ipairs{...} do
-		if type(decl_id) == "string" then
-			for _, case in ipairs{"nom", "gen", "dat", "acc", "inst", "prep"} do
-				decl[case] = decl[case] or {}
-				decl[case][i] = map_tbl(decl_id)
-			end
-		else
+		if type(decl_id) == "number" then
 			local cur = assert(con:execute(string.format([[
 				SELECT nom, gen, dat, acc, inst, prep FROM declensions WHERE id = %d
 			]], decl_id)))
 			local row = assert(cur:fetch({}, "a"))
 			cur:close()
 
-			for case, val in pairs(row) do
+			for _, case in ipairs{"nom", "gen", "dat", "acc", "inst", "prep"} do
 				decl[case] = decl[case] or {}
-				val = lutf8.gsub(val or '-', "[;,]%(", " (")
+				local val = lutf8.gsub(row[case] or '-', "[;,]%(", " (")
 				val = lutf8.gsub(val, "[;,]", ", ")
 				decl[case][i] = map_tbl(val)
+			end
+		else
+			for _, case in ipairs{"nom", "gen", "dat", "acc", "inst", "prep"} do
+				decl[case] = decl[case] or {}
+				decl[case][i] = map_tbl(decl_id or '-')
 			end
 		end
 	end
@@ -178,7 +175,7 @@ function format.noun(word_id, accented)
 	out_stream:write('.SH GENDER\n')
 	if row.gender and row.gender ~= "" then
 		local genders = {m = "male", f = "female", n = "neuter"}
-		out_stream:write(genders[row.gender], ', ')
+		out_stream:write(genders[row.gender] or row.gender, ', ')
 	end
 	out_stream:write(row.animate == 1 and 'animate' or 'inanimate', '\n')
 
@@ -218,9 +215,6 @@ function format.adjective(word_id, accented)
 	-- NOTE: Seldomly (e.g. nesomnenno), there is no entry in adjectives
 	if not row then return end
 
-	--out_stream:write('.SH CATEGORY\n',
-	--                 'adjective\n')
-
 	out_stream:write('.SH DECLENSION\n',
 	                 '.TS\n',
 	                 'allbox,tab(;);\n',
@@ -228,11 +222,13 @@ function format.adjective(word_id, accented)
 	                 'LB L  L  L  L.\n',
 	                 ';Male;Neutral;Female;Plural\n')
 	format_declensions(row.decl_m_id, row.decl_n_id, row.decl_f_id, row.decl_pl_id)
-	out_stream:write('Short;',
-	                 map_tbl(row.short_m or '-'), ';',
-	                 map_tbl(row.short_n or '-'), ';',
-	                 map_tbl(row.short_f or '-'), ';',
-	                 map_tbl(row.short_pl or '-'), '\n')
+	if row.short_m or row.short_n or row.short_f or row.short_pl then
+		out_stream:write('Short;',
+		                 map_tbl(row.short_m or '-'), ';',
+		                 map_tbl(row.short_n or '-'), ';',
+		                 map_tbl(row.short_f or '-'), ';',
+		                 map_tbl(row.short_pl or '-'), '\n')
+	end
 	-- NOTE: It is unclear why the trailing .sp is necessary
 	out_stream:write('.TE\n',
 	                 '.sp\n')
@@ -251,10 +247,7 @@ end
 -- NOTE: There is no separate table for adverbs
 -- Currently, we wouldn't print more than the category, which is also in the
 -- header, so it is omitted.
-function format.adverb(word_id, accented)
-	--out_stream:write('.SH CATEGORY\n',
-	--                 'adverb\n')
-end
+function format.adverb(word_id, accented) end
 
 function format.verb(word_id, accented)
 	local cur = assert(con:execute(string.format([[
@@ -282,34 +275,49 @@ function format.verb(word_id, accented)
 		                 lutf8.gsub(row.partner, "[;,]", ", "), '\n')
 	end
 
-	-- FIXME: Conjugation sometimes empty (e.g. widat')
 	-- FIXME: Can we assume that verbs without specified aspect are always
 	-- perfective?
-	out_stream:write('.SH ', row.aspect == "imperfective" and 'PRESENT\n' or 'FUTURE\n',
-	                 map_accented("\\[u042F] "), map_accented(row.sg1), '.\n.br\n',
-	                 map_accented("\\[u0422]\\[u044B] "), map_accented(row.sg2), '.\n.br\n',
-	                 map_accented("\\[u041E]\\[u043D]/\\[u041E]\\[u043D]\\[u0430]'/\\[u041E]\\[u043D]\\[u043E]' "),
-	                         map_accented(row.sg3), '.\n.br\n',
-	                 map_accented("\\[u041C]\\[u044B] "), map_accented(row.pl1), '.\n.br\n',
-	                 map_accented("\\[u0412]\\[u044B] "), map_accented(row.pl2), '.\n.br\n',
-	                 map_accented("\\[u041E]\\[u043D]\\[u0438]' "), map_accented(row.pl3), '.\n.br\n')
+	-- NOTE: Very seldomly (eg. widat'), all conjugations are missing.
+	-- Sometimes only the first person singular is missing.
+	if row.sg1 or row.sg2 or row.sg3 or row.pl1 or row.pl2 or row.pl3 then
+		out_stream:write('.SH ', row.aspect == "imperfective" and 'PRESENT\n' or 'FUTURE\n')
+		if row.sg1 then out_stream:write(map_accented("\\[u042F] "), map_accented(row.sg1), '.\n', '.br\n') end
+		out_stream:write(map_accented("\\[u0422]\\[u044B] "), map_accented(row.sg2), '.\n', '.br\n',
+		                 map_accented("\\[u041E]\\[u043D]/\\[u041E]\\[u043D]\\[u0430]'/\\[u041E]\\[u043D]\\[u043E]' "),
+		                         map_accented(row.sg3), '.\n', '.br\n',
+		                 map_accented("\\[u041C]\\[u044B] "), map_accented(row.pl1), '.\n', '.br\n',
+		                 map_accented("\\[u0412]\\[u044B] "), map_accented(row.pl2), '.\n', '.br\n',
+		                 map_accented("\\[u041E]\\[u043D]\\[u0438]' "), map_accented(row.pl3), '.\n', '.br\n')
+	end
 
-	out_stream:write('.SH PAST\n',
-	                 map_accented("\\[u041E]\\[u043D] "), map_accented(row.past_m), '.\n.br\n',
-	                 map_accented("\\[u041E]\\[u043D]\\[u0430]' "), map_accented(row.past_f), '.\n.br\n',
-	                 map_accented("\\[u041E]\\[u043D]\\[u043E]' "), map_accented(row.past_n), '.\n.br\n',
-	                 map_accented("\\[u041E]\\[u043D]\\[u0438]' "), map_accented(row.past_pl), '.\n')
+	if row.past_m or row.past_f or row.past_n or row.past_pl then
+		out_stream:write('.SH PAST\n',
+		                 map_accented("\\[u041E]\\[u043D] "),
+		                         map_accented(lutf8.gsub(row.past_m, ",", "/")), '.\n', '.br\n',
+		                 map_accented("\\[u041E]\\[u043D]\\[u0430]' "),
+		                         map_accented(lutf8.gsub(row.past_f, ",", "/")), '.\n', '.br\n',
+		                 map_accented("\\[u041E]\\[u043D]\\[u043E]' "),
+		                         map_accented(lutf8.gsub(row.past_n, ",", "/")), '.\n', '.br\n',
+		                 map_accented("\\[u041E]\\[u043D]\\[u0438]' "),
+		                         map_accented(lutf8.gsub(row.past_pl, ",", "/")), '.\n')
+	end
 
 	-- FIXME: Is the singular/plural distinction always obvious?
-	out_stream:write('.SH IMPERATIVE\n',
-	                 map_accented(row.imperative_sg), '! / ',
-	                 map_accented(row.imperative_pl), '!\n')
+	-- FIXME: Seldom (eg. sxodit'), the plural is missing, but this may be a general
+	-- bug of the entry.
+	if row.imperative_sg or row.imperative_pl then
+		out_stream:write('.SH IMPERATIVE\n',
+		                 map_accented(row.imperative_sg), '! / ',
+		                 map_accented(row.imperative_pl), '!\n')
+	end
 end
 
-function format.other(word_id, accented)
-	--out_stream:write('.SH CATEGORY\n',
-	--                 'other\n')
-end
+-- NOTE: There is no separate table for expressions
+-- Currently, we wouldn't print more than the category, which is also in the
+-- header, so it is omitted.
+function format.expression(word_id, accented) end
+
+function format.other(word_id, accented) end
 
 local function get_translations(word_id)
 	local ret = {}
@@ -561,8 +569,10 @@ else
 
 	repeat
 		io.stdout:write("Show [1..", #unique_rows, ", press enter to cancel]? "):flush()
-		local choice = io.stdin:read():lower()
-		if choice == "" or choice == "q" then os.exit() end
+		-- If stdin is not available we always assume 1.
+		-- This can especially happen when using `make check`.
+		local choice = io.stdin:read() or "1"
+		if choice == "" or choice:lower() == "q" then os.exit() end
 		row = unique_rows[tonumber(choice)]
 	until row
 end
@@ -586,7 +596,7 @@ out_stream:write('.\\" t\n',
                  '.TH "', row.bare, '" "', word_type, '" "')
 if row.rank then
 	out_stream:write('#', row.rank, row.level and ' ('..row.level..')' or '')
-else
+elseif row.level then
 	out_stream:write(row.level)
 end
 out_stream:write('" "openrussian.lua" "openrussian.org"\n')

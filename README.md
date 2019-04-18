@@ -53,11 +53,15 @@ Building is straight forward:
 If you want to redownload the latest [openrussian.org](https://en.openrussian.org/)
 database:
 
-    make clean all
+    make clean all check
 
 **Warning:** While the database content might be newer, the database schema
 might also at any time become incompatible with the existing script.
-But you are of course welcome to contribute fixes/updates. :-)
+That is why a `check` is performed after building everything in the above
+example.
+If it returns lots of errors, you should probably stay with the original database.
+Otherwise, the error messages might help in fixing/upgrading the script.
+You are of course welcome to contribute patches. :-)
 
 ## Examples
 
