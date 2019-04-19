@@ -38,11 +38,15 @@ check : openrussian-sqlite3.db openrussian
 
 # NOTE: Installation of the Bash completions depends on the Debain bash-completion
 # package being installed or something similar
-install : openrussian openrussian-sqlite3.db openrussian-completion.bash
-	mkdir -p $(DESTDIR)$(PREFIX)/bin $(DESTDIR)$(PREFIX)/share/openrussian
+install : openrussian openrussian-sqlite3.db \
+          openrussian-completion.bash openrussian.1
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	install openrussian $(DESTDIR)$(PREFIX)/bin
+	mkdir -p $(DESTDIR)$(PREFIX)/share/openrussian
 	cp openrussian-sqlite3.db $(DESTDIR)$(PREFIX)/share/openrussian
 	cp openrussian-completion.bash $(DESTDIR)$(COMPLETIONSDIR)/openrussian
+	mkdir -p $(DESTDIR)$(PREFIX)/man/man1
+	cp openrussian.1 $(DESTDIR)$(PREFIX)/man/man1
 
 clean:
 	$(RM) openrussian openrussian-sql.zip openrussian-sqlite3.db

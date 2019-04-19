@@ -1,0 +1,139 @@
+.TH "openrussian" 1 "19 April 2019" "openrussian.lua"
+.
+.SH NAME
+openrussian \-\-
+Offline Console Russian Dictionary (based on openrussian.org)
+.
+.SH SYNOPSIS
+.
+.SY openrussian
+.OP "-L" lang
+.OP "-V"
+.OP "-p"
+.RI [ "pattern .\|.\|." ]
+.YS
+.
+.SH DESCRIPTION
+.
+This is an offline console and terminal-friendly Russian dictionary,
+based on the database of
+.UR https://en.openrussian.org/
+openrussian.org
+.UE .
+.
+.LP
+The search term is specified as a
+.BR glob (7)
+\fIpattern\fP.
+All non-option parameters are concatenated into a single space-separated
+search pattern, so there is no need to quote search terms containing spaces.
+Any accent combining character (u0301) is stripped from the input pattern.
+.
+The pattern is matched against:
+.RS
+.IP \(bu
+word base forms (infinitives, singular nominative nouns and singular
+nominative male adjectives);
+.IP \(bu
+word inflections (conjugations, imperatives, declinations),
+unless the \fB\-V\fP (verbatim) option is specified;
+.IP \(bu
+translations according to the translation language.
+The translation language (currently \fIen\fP or \fIde\fP)
+is guessed from the system
+.BR locale (5),
+but can be overwritten using the \fB\-L\fP option.
+.RE
+.
+.LP
+The accent is always ignored when matching search terms.
+If more than one words are found matching the search pattern, the user
+is presented with a list of them.
+After choosing one \(em or if there is a direct match \(em the information
+is displayed using the system
+.BR man (1)
+page browser.
+.
+The \fB\-p\fP (pipe) option can be used to output the man-page source (see
+.BR groff_man (7))
+to stdout instead.
+This may be useful for storing them, generating PDF files, etc.
+.
+.SH OPTIONS
+.
+.IP "\fB-L\fR \fIlang\fR"
+Overwrite the translation language.
+Either \fIen\fP or \fIde\fP may be specified.
+The space after \fB-L\fP is optional,
+so you may also for instance write \(lq-Lde\(rq.
+.IP "\fB-V\fR"
+Turn on verbatim matching, ie. turn off any kind of inflection matching
+and case folding.
+This may reduce the number of results for ambiguous search terms.
+.IP "\fB-p\fR"
+Output the man-page to stdout instead of piping it directly into the
+man-page browser.
+.IP "\fIpattern .\|.\|.\fR"
+The search term as a number of
+.BR glob (7)
+patterns.
+.
+.\" NOTE: README.md also lists some examples.
+.SH EXAMPLES
+.
+.TP
+A simple lookup:
+.EX
+openrussian саморазрушение
+.EE
+.TP
+Display the German translation:
+.EX
+openrussian -Lde саморазрушение
+.EE
+.TP
+If you are unsure which consonants appear in this word:
+.EX
+openrussian самора[сз]ру[шщ]ение
+.EE
+.TP
+Find more words derived from \(lqразрушение\(rq:
+.EX
+openrussian *разрушение
+.EE
+.TP
+Avoid ambiguous search results:
+.EX
+openrussian -V коса
+.EE
+.TP
+Look up by translation:
+.EX
+openrussian catch a cold
+.EE
+.TP
+Graphical display using \fBgroffer\fP(1):
+.EX
+openrussian -p кошка | groffer -Kutf8 --mode pdf2
+.EE
+You may have to specify a non-default font supporting
+cyrillic characters via groffer's \fB-f\fP option.
+.
+.SH SEE ALSO
+.
+.BR glob (7),
+.BR locale (5),
+.BR man (1),
+.BR groff_man (7),
+.BR groffer (1),
+.UR https://en.openrussian.org/
+openrussian.org website
+.UE
+.
+.SH AUTHOR
+.
+This manpage and the openrussian.lua script was written by
+.MT robin.haberkorn@googlemail.com
+Robin Haberkorn
+.ME .
+\# EOF

@@ -1,5 +1,8 @@
 # An Offline Console Russian Dictionary (based on openrussian.org)
 
+This is an offline console and terminal-friendly Russian dictionary,
+based on the database of [https://en.openrussian.org/](openrussian.org).
+
 * Works offline (without internet access) and is very fast.
   This really pays off if you browse Russian words a lot.
 * It integrates well into the console environment - browse dictionary
@@ -65,16 +68,36 @@ You are of course welcome to contribute patches. :-)
 
 ## Examples
 
+A simple lookup:
+
     openrussian саморазрушение
+
+Display the German translation:
+
     openrussian -Lde саморазрушение
-    openrussian самора[сз]рушение
+
+If you are unsure which consonants appear in this word:
+
+    openrussian самора[сз]ру[шщ]ение
+
+Find more words derived from "разрушение":
+
     openrussian *разрушение
+
+Avoid ambiguous search results:
+
     openrussian -V коса
+
+Look up by translation:
+
     openrussian catch a cold
 
 Graphical display using `groffer`:
 
-    openrussian -p кошка | groffer -Kutf8 --mode pdf2 -fSTIX
+    openrussian -p кошка | groffer -Kutf8 --mode pdf2
+
+You may have to specify a non-default font supporting
+cyrillic characters via groffer's `-f` option.
 
 ## License
 
