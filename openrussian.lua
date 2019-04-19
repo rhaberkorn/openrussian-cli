@@ -139,8 +139,8 @@ local function format_declensions(...)
 
 			for _, case in ipairs{"nom", "gen", "dat", "acc", "inst", "prep"} do
 				decl[case] = decl[case] or {}
-				local val = lutf8.gsub(row[case] or '-', "[;,]%(", " (")
-				val = lutf8.gsub(val, "[;,]", ", ")
+				local val = lutf8.gsub(row[case] or '-', "[;,] *%(", " (")
+				val = lutf8.gsub(val, "[;,] *", ", ")
 				decl[case][i] = map_tbl(val)
 			end
 		else
@@ -235,12 +235,12 @@ function format.adjective(word_id, accented)
 
 	if row.comparative and row.comparative ~= "" then
 		out_stream:write('.SH COMPARATIVE\n',
-		                 map_accented(lutf8.gsub(row.comparative, "[;,]", ", ")), '\n')
+		                 map_accented(lutf8.gsub(row.comparative, "[;,] *", ", ")), '\n')
 	end
 
 	if row.superlative and row.superlative ~= "" then
 		out_stream:write('.SH SUPERLATIVE\n',
-		                 map_accented(lutf8.gsub(row.superlative, "[;,]", ", ")), '\n')
+		                 map_accented(lutf8.gsub(row.superlative, "[;,] *", ", ")), '\n')
 	end
 end
 
@@ -272,7 +272,7 @@ function format.verb(word_id, accented)
 		-- but since the DB lists the partner as a string instead of
 		-- word_id, finding the right entry could be unreliable 
 		out_stream:write('.SH PARTNER\n',
-		                 lutf8.gsub(row.partner, "[;,]", ", "), '\n')
+		                 lutf8.gsub(row.partner, "[;,] *", ", "), '\n')
 	end
 
 	-- FIXME: Can we assume that verbs without specified aspect are always
