@@ -118,7 +118,7 @@ end
 -- FIXME: map_accented() does not work for tables since tbl will count the
 -- combined character as two. Theoretically, Groff has composite characters
 -- like \u[u043E_0301] but they don't work for all the cyrillic
--- vocals.
+-- vowels.
 -- If we really wanted to, we could replace every accented character
 -- with an inline macro that is defined at Troff runtime depending on the
 -- output device, so we could get accented characters in PDF tables at least.
@@ -132,7 +132,7 @@ local function format_declensions(...)
 	for i, decl_id in ipairs{...} do
 		if type(decl_id) == "number" then
 			local cur = assert(con:execute(string.format([[
-				SELECT nom, gen, dat, acc, inst, prep FROM declensions WHERE id = %d
+				SELECT * FROM declensions WHERE id = %d
 			]], decl_id)))
 			local row = assert(cur:fetch({}, "a"))
 			cur:close()
@@ -293,13 +293,13 @@ function format.verb(word_id, accented)
 	if row.past_m or row.past_f or row.past_n or row.past_pl then
 		out_stream:write('.SH PAST\n',
 		                 map_accented("\\[u041E]\\[u043D] "),
-		                         map_accented(lutf8.gsub(row.past_m, ",", "/")), '.\n', '.br\n',
+		                         map_accented(lutf8.gsub(row.past_m, "[,/]+", "/")), '.\n', '.br\n',
 		                 map_accented("\\[u041E]\\[u043D]\\[u0430]' "),
-		                         map_accented(lutf8.gsub(row.past_f, ",", "/")), '.\n', '.br\n',
+		                         map_accented(lutf8.gsub(row.past_f, "[,/]+", "/")), '.\n', '.br\n',
 		                 map_accented("\\[u041E]\\[u043D]\\[u043E]' "),
-		                         map_accented(lutf8.gsub(row.past_n, ",", "/")), '.\n', '.br\n',
+		                         map_accented(lutf8.gsub(row.past_n, "[,/]+", "/")), '.\n', '.br\n',
 		                 map_accented("\\[u041E]\\[u043D]\\[u0438]' "),
-		                         map_accented(lutf8.gsub(row.past_pl, ",", "/")), '.\n')
+		                         map_accented(lutf8.gsub(row.past_pl, "[,/]+", "/")), '.\n')
 	end
 
 	-- FIXME: Is the singular/plural distinction always obvious?
