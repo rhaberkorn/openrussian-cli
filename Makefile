@@ -47,6 +47,7 @@ install : openrussian openrussian-sqlite3.db \
 	cp openrussian-completion.bash $(DESTDIR)$(COMPLETIONSDIR)/openrussian
 	mkdir -p $(DESTDIR)$(PREFIX)/man/man1
 	cp openrussian.1 $(DESTDIR)$(PREFIX)/man/man1
+	mandb
 
 clean:
 	$(RM) openrussian openrussian-sql.zip openrussian-sqlite3.db
