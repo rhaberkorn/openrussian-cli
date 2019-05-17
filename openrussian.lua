@@ -5,13 +5,13 @@ local lutf8 = require "lua-utf8"
 
 local ACCENT = lutf8.char(0x0301) -- Accent combining character
 
-local lang = os.setlocale(nil, "ctype"):match("^([^_]+)")
+local langs = {}
 
 local search_words = {}
 
 local function usage(stream)
 	stream:write("Usage: ", arg[0], " [-L<lang>] [-V] [-p] <pattern...>\n",
-	             "\t-L<lang>    Set language to <lang> (currently en or de, guessed from locale)\n",
+	             "\t-L<lang>    Overwrite translation language (currently en or de)\n",
 	             "\t-V          Verbatim matching (no case folding and inflections)\n",
 	             "\t-p          Print Troff code to stdout\n")
 end
@@ -22,12 +22,12 @@ for i = 1, #arg do
 
 		if opt:sub(1, 1) == "L" then
 			if #opt > 1 then
-				lang = opt:sub(2)
+				table.insert(langs, opt:sub(2))
 			elseif i == #arg then
 				usage(io.stderr)
 				os.exit(false)
 			else
-				lang = arg[i+1]
+				table.insert(langs, arg[i+1])
 				i = i + 1
 			end
 		elseif opt == "V" then
@@ -59,10 +59,12 @@ end
 local search_word = table.concat(search_words, " ")..
                     (auto_complete and "*" or "")
 
+if #langs == 0 then langs = {os.setlocale(nil, "ctype"):match("^([^_]+)")} end
+
 -- FIXME: Currently only English and German are actually
 -- contained in the database, but this might change.
 -- Perhaps query the availability dynamically.
-if lang ~= "en" and lang ~= "de" then lang = "en" end
+if langs[1] ~= "en" and langs[1] ~= "de" then langs = {"en"} end
 
 local function dirname(path)
 	return path:match("^(.*)/.+$") or "."
@@ -322,22 +324,22 @@ function format.other(word_id, accented) end
 local function get_translations(word_id)
 	local ret = {}
 
-	-- FIXME: Fetch other translations if primary
-	-- language is not available
-	local cur = assert(con:execute(string.format([[
-		SELECT tl FROM translations
-		WHERE word_id = %d AND lang = '%s'
-	]], word_id, con:escape(lang))))
-	local row = cur:fetch({}, "a")
-	while row do
-		-- NOTE: One entry might contain many comma-separated
-		-- translations
-		for word in lutf8.gmatch(row.tl..", ", "(.-), ") do
-			table.insert(ret, word)
+	for _, lang in ipairs(langs) do
+		local cur = assert(con:execute(string.format([[
+			SELECT tl FROM translations
+			WHERE word_id = %d AND lang = '%s'
+		]], word_id, con:escape(lang))))
+		local row = cur:fetch({}, "a")
+		while row do
+			-- NOTE: One entry might contain many comma-separated
+			-- translations
+			for word in lutf8.gmatch(row.tl..", ", "(.-), ") do
+				table.insert(ret, word)
+			end
+			row = cur:fetch({}, "a")
 		end
-		row = cur:fetch({}, "a")
+		cur:close()
 	end
-	cur:close()
 
 	return ret
 end
@@ -494,27 +496,29 @@ end
 -- two queries are significantly faster - probably because of having to perform less
 -- string concatenations.
 if #rows == 0 then
-	-- NOTE: The translation entry frequently contains a comma-separated
-	-- list of translations
-	--
-	-- FIXME: Case folding only works for ASCII, which should be sufficient for
-	-- German/English text (almost)...
-	-- FIXME: The string concatenation is a real slow-down and the GLOB cannot
-	-- be optimized.
-	-- Perhaps the translations should be in their own (new) indexed table.
-	cur = assert(con:execute(string.format([[
-		SELECT %s(", "||tl||", ") AS completions, words.*
-		FROM words JOIN translations ON words.id = word_id
-		WHERE LIKELY(disabled = 0) AND lang = '%s' AND completions GLOB %s('*, %s, *')
-		ORDER BY rank
-	]], verbatim and "" or "LOWER", con:escape(lang), verbatim and "" or "LOWER", con:escape(search_word))))
+	for _, lang in ipairs(langs) do
+		-- NOTE: The translation entry frequently contains a comma-separated
+		-- list of translations
+		--
+		-- FIXME: Case folding only works for ASCII, which should be sufficient for
+		-- German/English text (almost)...
+		-- FIXME: The string concatenation is a real slow-down and the GLOB cannot
+		-- be optimized.
+		-- Perhaps the translations should be in their own (new) indexed table.
+		cur = assert(con:execute(string.format([[
+			SELECT %s(", "||tl||", ") AS completions, words.*
+			FROM words JOIN translations ON words.id = word_id
+			WHERE LIKELY(disabled = 0) AND lang = '%s' AND completions GLOB %s('*, %s, *')
+			ORDER BY rank
+		]], verbatim and "" or "LOWER", con:escape(lang), verbatim and "" or "LOWER", con:escape(search_word))))
 
-	repeat
-		row = cur:fetch({}, "a")
-		table.insert(rows, row)
-	until not row
+		repeat
+			row = cur:fetch({}, "a")
+			table.insert(rows, row)
+		until not row
 
-	cur:close()
+		cur:close()
+	end
 end
 
 if auto_complete then
@@ -583,8 +587,12 @@ local word_id = row.id
 local word_accented = row.accented or row.bare
 local word_derived_from = row.derived_from_word_id
 local word_audio = row.audio
-local word_usage = row["usage_"..lang]
 local word_type = row.type or "other"
+local word_usages = {}
+
+for _, lang in ipairs(langs) do
+	table.insert(word_usages, row["usage_"..lang])
+end
 
 -- Open stream only now, after no more messages have to be written to
 -- stdout/stderr.
@@ -622,9 +630,9 @@ format[word_type](word_id, word_accented)
 --
 -- Generic sections
 --
-if word_usage then
+if #word_usages > 0 then
 	out_stream:write('.SH USAGE\n',
-	                 word_usage, '\n')
+	                 table.concat(word_usages, ', '), '\n')
 end
 
 -- FIXME: Perhaps this should rather be part of the SEE ALSO section
@@ -643,16 +651,25 @@ end
 --
 -- NOTE: There can be many examples, so print them late.
 --
-cur = assert(con:execute(string.format([[
-	SELECT ru, start, length, tl
-	FROM sentences_words JOIN sentences ON sentence_id = sentences.id
-	WHERE word_id = %d AND lang = '%s'
-]], word_id, con:escape(lang))))
-row = cur:fetch({}, "a")
-if row then
-	out_stream:write('.SH EXAMPLES\n')
+rows = {}
+for _, lang in ipairs(langs) do
+	cur = assert(con:execute(string.format([[
+		SELECT ru, start, length, tl
+		FROM sentences_words JOIN sentences ON sentence_id = sentences.id
+		WHERE word_id = %d AND lang = '%s'
+	]], word_id, con:escape(lang))))
 
 	repeat
+		row = cur:fetch({}, "a")
+		table.insert(rows, row)
+	until not row
+
+	cur:close()
+end
+if #rows > 0 then
+	out_stream:write('.SH EXAMPLES\n')
+
+	for _, row in ipairs(rows) do
 		-- FIXME: The accent is not always available in the default
 		-- italic font when formatting for PDF.
 		local ru_hl = lutf8.sub(row.ru, 1, row.start)..'\\fI'..
@@ -662,10 +679,8 @@ if row then
 		out_stream:write('.TP\n',
 		                 map_accented(ru_hl), '\n',
 		                 row.tl, '\n')
-		row = cur:fetch({}, "a")
-	until not row
+	end
 end
-cur:close()
 
 -- Audio recordings might be useful occasionally, but this is an offline/terminal
 -- application, so it makes sense to print them last (like URLs in manpages).

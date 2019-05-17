@@ -1,7 +1,7 @@
 # An Offline Console Russian Dictionary (based on openrussian.org)
 
 This is an offline console and terminal-friendly Russian dictionary,
-based on the database of [https://en.openrussian.org/](openrussian.org).
+based on the database of [openrussian.org](https://en.openrussian.org/).
 
 * Works offline (without internet access) and is very fast.
   This really pays off if you browse Russian words a lot.
@@ -24,11 +24,15 @@ based on the database of [https://en.openrussian.org/](openrussian.org).
 
 Possible future features:
 
-* Bilingual modes (German and English translations on the same generated page)
-  to increase the amount of information if you happen to speak both of these languages.
+* Limit the number of results (by default to 1000) - the sheer number of results
+  can slow down auto-completions.
+* Not all terminals can display the accent correctly (linux console), so we should have
+  a fallback.
+  Ideally this can be detected, or we simply whitelist terminal emulators via $TERM.
 * Better internationalization when generating German pages (`-Lde`).
-* Lookups via popular ASCII-cyrillic transliterations - would be useful without
-  a Russian/cyrillic keyboard layout.
+* Lookups via popular
+  [ASCII-cyrillic transliterations](https://en.wikipedia.org/wiki/Informal_romanizations_of_Cyrillic) -
+  would be useful without a Russian/cyrillic keyboard layout.
 * Be tolerant to typing mistakes.
 * Accented characters are still broken in nroff tables
   (see https://lists.gnu.org/archive/html/groff/2018-08/msg00000.html).
@@ -44,7 +48,7 @@ Run-time dependencies:
     sudo apt-get install lua5.2 lua-sql-sqlite3 man-db bash-completion
 
 Furthermore, you will need the [luautf8 library](https://github.com/starwing/luautf8).
-Using luarocks, it may be installed as follows:
+Using [LuaRocks](https://luarocks.org/), it may be installed as follows:
 
     sudo luarocks-5.2 install luautf8
 
@@ -75,6 +79,10 @@ A simple lookup:
 Display the German translation:
 
     openrussian -Lde саморазрушение
+
+Display both German and English translations, giving precedence to German:
+
+    openrussian -Lde -Len саморазрушение
 
 If you are unsure which consonants appear in this word:
 

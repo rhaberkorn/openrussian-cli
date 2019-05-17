@@ -38,9 +38,9 @@ nominative male adjectives);
 word inflections (conjugations, imperatives, declinations),
 unless the \fB\-V\fP (verbatim) option is specified;
 .IP \(bu
-translations according to the translation language.
-The translation language (currently \fIen\fP or \fIde\fP)
-is guessed from the system
+translations according to the translation languages.
+The translation languages (currently \fIen\fP, \fIde\fP or a combination thereof)
+are guessed from the system
 .BR locale (5),
 but can be overwritten using the \fB\-L\fP option.
 .RE
@@ -62,10 +62,14 @@ This may be useful for storing them, generating PDF files, etc.
 .SH OPTIONS
 .
 .IP "\fB-L\fR \fIlang\fR"
-Overwrite the translation language.
-Either \fIen\fP or \fIde\fP may be specified.
+Overwrite the translation languages.
+Either \fIen\fP (English) or \fIde\fP (German) may be specified.
 The space after \fB-L\fP is optional,
 so you may also for instance write \(lq-Lde\(rq.
+Multiple translations can be displayed on the same page by specifying
+\fB-L\fP multiple times.
+The order \fB-L\fP flags also matters and determines the order of
+translated material on the result page.
 .IP "\fB-V\fR"
 Turn on verbatim matching, ie. turn off any kind of inflection matching
 and case folding.
@@ -90,6 +94,11 @@ openrussian саморазрушение
 Display the German translation:
 .EX
 openrussian -Lde саморазрушение
+.EE
+.TP
+Display both German and English translations, giving precedence to German:
+.EX
+openrussian -Lde -Len саморазрушение
 .EE
 .TP
 If you are unsure which consonants appear in this word:
