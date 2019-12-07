@@ -70,6 +70,26 @@ If it returns lots of errors, you should probably stay with the original databas
 Otherwise, the error messages might help in fixing/upgrading the script.
 You are of course welcome to contribute patches. :-)
 
+### Bash Aliases
+
+While the default command name `openrussian` was chosen to avoid cluttering the
+global command namespace, you may want to define more concise shortcuts.
+In order to do so, add something like the following to your `~/.bashrc`:
+
+    alias ru='openrussian' ру='openrussian'
+    _completion_loader openrussian
+    complete -F _openrussian_completions ru ру
+
+This adds the alias `ru` (latin) and `ру` (cyrillic).
+It would however be useful to add a few default options to the `ru` and `ру` aliases.
+Unfortunately, above method cannot take that into account.
+A more robust solution might be to install the
+[complete-alias](https://github.com/cykerway/complete-alias) script and adding
+something like the following to your `~/.bash_completion`:
+
+    alias ru='openrussian -Lde -Len' ру='openrussian -Lde -Len'
+    complete -F _complete_alias ru ру
+
 ## Examples
 
 A simple lookup:
