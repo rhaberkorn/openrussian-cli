@@ -136,12 +136,12 @@ local function format_declensions(...)
 			local cur = assert(con:execute(string.format([[
 				SELECT * FROM declensions WHERE id = %d
 			]], decl_id)))
-			local row = assert(cur:fetch({}, "a"))
+			local row = cur:fetch({}, "a")
 			cur:close()
 
 			for _, case in ipairs{"nom", "gen", "dat", "acc", "inst", "prep"} do
 				decl[case] = decl[case] or {}
-				local val = lutf8.gsub(row[case] or '-', "[;,] *%(", " (")
+				local val = lutf8.gsub(row and row[case] or '-', "[;,] *%(", " (")
 				val = lutf8.gsub(val, "[;,] *", ", ")
 				decl[case][i] = map_tbl(val)
 			end
@@ -185,7 +185,7 @@ function format.noun(word_id, accented)
 		-- NOTE: Noun "partners" seem to be male/female counterparts.
 		-- FIXME: It would also be nice to include an accented version,
 		-- but since the DB lists the partner as a string instead of
-		-- word_id, finding the right entry could be unreliable 
+		-- word_id, finding the right entry could be unreliable.
 		out_stream:write('.SH PARTNER\n',
 		                 row.partner, '\n')
 	end
@@ -199,6 +199,8 @@ function format.noun(word_id, accented)
 	if row.indeclinable == 1 then
 		format_declensions(accented, accented)
 	else
+		-- FIXME: The ids turn out to be sometimes invalid and it would
+		-- be better to omit the entire DECLENSION section.
 		format_declensions(row.pl_only == 0 and row.decl_sg_id or '-',
 		                   row.sg_only == 0 and row.decl_pl_id or '-')
 	end
