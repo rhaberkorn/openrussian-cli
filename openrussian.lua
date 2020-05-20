@@ -187,7 +187,7 @@ function format.noun(word_id, accented)
 		-- but since the DB lists the partner as a string instead of
 		-- word_id, finding the right entry could be unreliable.
 		out_stream:write('.SH PARTNER\n',
-		                 row.partner, '\n')
+		                 map_accented(row.partner), '\n')
 	end
 
 	out_stream:write('.SH DECLENSION\n',
@@ -276,7 +276,7 @@ function format.verb(word_id, accented)
 		-- but since the DB lists the partner as a string instead of
 		-- word_id, finding the right entry could be unreliable 
 		out_stream:write('.SH PARTNER\n',
-		                 lutf8.gsub(row.partner, "[;,] *", ", "), '\n')
+		                 lutf8.gsub(map_accented(row.partner), "[;,] *", ", "), '\n')
 	end
 
 	-- FIXME: Can we assume that verbs without specified aspect are always
