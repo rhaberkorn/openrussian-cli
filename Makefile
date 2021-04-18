@@ -21,7 +21,7 @@ openrussian : openrussian.lua
 # a database matching the openrussian.lua script.
 #.INTERMEDIATE: openrussian-sql.zip
 openrussian-sql.zip:
-	wget -O $@ 'https://en.openrussian.org/downloads/openrussian-sql.zip'
+	wget -O $@ 'https://api.openrussian.org/downloads/openrussian-sql.zip'
 
 openrussian-sqlite3.db : openrussian-sql.zip mysql2sqlite postprocess.sql
 	$(RM) $@
