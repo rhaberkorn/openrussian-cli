@@ -50,4 +50,4 @@ install : openrussian openrussian-sqlite3.db \
 	mandb
 
 clean:
-	$(RM) openrussian openrussian-sql.zip openrussian-sqlite3.db
+	$(RM) openrussian openrussian-sqlite3.db
