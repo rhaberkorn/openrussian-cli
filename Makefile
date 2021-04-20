@@ -21,11 +21,11 @@ openrussian : openrussian.lua
 # a database matching the openrussian.lua script.
 #.INTERMEDIATE: openrussian-sql.zip
 openrussian-sql.zip:
-	wget -O $@ 'https://en.openrussian.org/downloads/openrussian-sql.zip'
+	wget -O $@ 'https://api.openrussian.org/downloads/openrussian-sql.zip'
 
 openrussian-sqlite3.db : openrussian-sql.zip mysql2sqlite postprocess.sql
 	$(RM) $@
-	unzip -p $< openrussian.sql | ./mysql2sqlite - | sqlite3 $@
+	unzip -p $< openrussian.sql | awk -f ./mysql2sqlite - | sqlite3 $@
 	sqlite3 $@ -batch <postprocess.sql
 
 # Try to generate all possible pages
@@ -50,4 +50,6 @@ install : openrussian openrussian-sqlite3.db \
 	mandb
 
 clean:
-	$(RM) openrussian openrussian-sql.zip openrussian-sqlite3.db
+	$(RM) openrussian openrussian-sqlite3.db
+
+.PHONY: all check install clean
