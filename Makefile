@@ -51,3 +51,5 @@ install : openrussian openrussian-sqlite3.db \
 
 clean:
 	$(RM) openrussian openrussian-sqlite3.db
+
+.PHONY: all check install clean
