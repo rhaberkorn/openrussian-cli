@@ -219,23 +219,25 @@ function format.adjective(word_id, accented)
 	-- NOTE: Seldomly (e.g. nesomnenno), there is no entry in adjectives
 	if not row then return end
 
-	out_stream:write('.SH DECLENSION\n',
-	                 '.TS\n',
-	                 'allbox,tab(;);\n',
-	                 'L  LB LB LB LB\n',
-	                 'LB L  L  L  L.\n',
-	                 ';Male;Neutral;Female;Plural\n')
-	format_declensions(row.decl_m_id, row.decl_n_id, row.decl_f_id, row.decl_pl_id)
-	if row.short_m or row.short_n or row.short_f or row.short_pl then
-		out_stream:write('Short;',
-		                 map_tbl(row.short_m or '-'), ';',
-		                 map_tbl(row.short_n or '-'), ';',
-		                 map_tbl(row.short_f or '-'), ';',
-		                 map_tbl(row.short_pl or '-'), '\n')
+	if row.decl_m_id and row.decl_n_id and row.decl_f_id and row.decl_pl_id then
+		out_stream:write('.SH DECLENSION\n',
+		                 '.TS\n',
+		                 'allbox,tab(;);\n',
+		                 'L  LB LB LB LB\n',
+		                 'LB L  L  L  L.\n',
+		                 ';Male;Neutral;Female;Plural\n')
+		format_declensions(row.decl_m_id, row.decl_n_id, row.decl_f_id, row.decl_pl_id)
+		if row.short_m or row.short_n or row.short_f or row.short_pl then
+			out_stream:write('Short;',
+			                 map_tbl(row.short_m or '-'), ';',
+			                 map_tbl(row.short_n or '-'), ';',
+			                 map_tbl(row.short_f or '-'), ';',
+			                 map_tbl(row.short_pl or '-'), '\n')
+		end
+		-- NOTE: It is unclear why the trailing .sp is necessary
+		out_stream:write('.TE\n',
+		                 '.sp\n')
 	end
-	-- NOTE: It is unclear why the trailing .sp is necessary
-	out_stream:write('.TE\n',
-	                 '.sp\n')
 
 	if row.comparative and row.comparative ~= "" then
 		out_stream:write('.SH COMPARATIVE\n',
