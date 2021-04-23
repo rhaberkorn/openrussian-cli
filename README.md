@@ -39,6 +39,8 @@ Possible future features:
 
 ## Installation
 
+### Ubuntu
+
 Build-time dependencies:
 
     sudo apt-get install make pkg-config lua5.2 bash-completion wget unzip gawk sqlite3
@@ -69,6 +71,22 @@ example.
 If it returns lots of errors, you should probably stay with the original database.
 Otherwise, the error messages might help in fixing/upgrading the script.
 You are of course welcome to contribute patches. :-)
+
+### NixOS
+
+`openrussian-cli` is part of the `nixos-unstable` (and soon `nixos-21.05`) channels.
+
+To install `openrussian-cli` on NixOS:
+* Via `configuration.nix`:
+  ```nix
+  environment.systemPackages = [ pkgs.openrussian-cli ];
+  ```
+* Via `nix-env`:
+  ```bash
+  nix-env -iA openrussian-cli
+  ```
+
+See https://nixos.org/manual/nixos/stable/index.html#sec-package-management for more information.
 
 ### Bash Aliases
 
