@@ -18,7 +18,7 @@ CREATE TABLE bare_inflections (`word_id` INTEGER NOT NULL, `bare` VARCHAR(100) N
 -- also be BINARY collated. See also:
 -- https://www.sqlite.org/optoverview.html#the_like_optimization
 CREATE INDEX idx_bare_inflections_bare ON bare_inflections (`bare`);
-INSERT INTO bare_inflections SELECT word_id, REPLACE(temp, "'", "") AS bare
+INSERT INTO bare_inflections SELECT word_id, REPLACE(temp, '''', '') AS bare
 FROM (
 	-- Search word might be a noun or adjective declension
 	SELECT word_id, nom AS temp FROM declensions
@@ -72,7 +72,7 @@ FROM (
 	UNION ALL
 	SELECT word_id, pl3 AS temp FROM conjugations
 )
-WHERE bare <> "";
+WHERE bare <> '';
 
 -- Saves a few megabytes
 VACUUM;
