@@ -11,7 +11,7 @@ based on the database of [openrussian.org](https://en.openrussian.org/).
   pages ~~very easy~~ possible.
 * Puts very low requirements on the runtime environment:
   a black and white terminal display is sufficient.
-* Bash auto completions supported.
+* Auto completions supported for Bash and Zsh.
   Most of this is handled by the script's `-C` argument, so it
   is trivial to add support for other shells.
   Contributions are welcome!
@@ -124,6 +124,13 @@ something like the following to your `~/.bash_completion`:
 
     alias ru='openrussian -Lde -Len' ру='openrussian -Lde -Len'
     complete -F _complete_alias ru ру
+
+### Zsh Aliases
+
+Autocompletion will automatically work with aliases in the Zsh, so it is
+sufficient to add the following to your `~/.zshrc`:
+
+    alias ru='openrussian -Lde -Len' ру='openrussian -Lde -Len'
 
 ## Examples
 

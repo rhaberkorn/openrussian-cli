@@ -3,7 +3,8 @@ PREFIX ?= /usr/local
 LUA ?= lua5.2
 LUAC ?= luac5.2
 
-COMPLETIONSDIR ?= $(shell pkg-config --variable=completionsdir bash-completion)
+BASH_COMPLETIONSDIR ?= $(shell pkg-config --variable=completionsdir bash-completion)
+ZSH_COMPLETIONSDIR ?= $(PREFIX)/share/zsh/site-functions
 
 all : openrussian openrussian-sqlite3.db
 
@@ -44,7 +45,14 @@ install : openrussian openrussian-sqlite3.db \
 	install openrussian $(DESTDIR)$(PREFIX)/bin
 	mkdir -p $(DESTDIR)$(PREFIX)/share/openrussian
 	cp openrussian-sqlite3.db $(DESTDIR)$(PREFIX)/share/openrussian
-	cp openrussian-completion.bash $(DESTDIR)$(COMPLETIONSDIR)/openrussian
+ifneq ($(BASH_COMPLETIONSDIR),)
+	mkdir -p $(DESTDIR)$(BASH_COMPLETIONSDIR)
+	cp openrussian-completion.bash $(DESTDIR)$(BASH_COMPLETIONSDIR)/openrussian
+endif
+ifneq ($(ZSH_COMPLETIONSDIR),)
+	mkdir -p $(DESTDIR)$(ZSH_COMPLETIONSDIR)
+	cp openrussian-completion.zsh $(DESTDIR)$(ZSH_COMPLETIONSDIR)/_openrussian
+endif
 	mkdir -p $(DESTDIR)$(PREFIX)/man/man1
 	cp openrussian.1 $(DESTDIR)$(PREFIX)/man/man1
 	mandb || true
