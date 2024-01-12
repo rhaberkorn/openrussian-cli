@@ -605,7 +605,7 @@ if use_stdout then
 else
 	local size_stream = io.popen("stty size")
 	local columns = size_stream and size_stream:read("*a"):match("%d+ (%d+)") or 80
-	out_stream = io.popen("nroff -Kutf8 -Tutf8 -t -man -rLL="..columns.."n -rLT="..columns.."n | less -r", "w")
+	out_stream = io.popen("groff -Kutf8 -Tutf8 -t -man -rLL="..columns.."n -rLT="..columns.."n | less -r", "w")
 end
 assert(out_stream)
 
