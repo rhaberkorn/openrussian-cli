@@ -36,6 +36,8 @@ Possible future features:
 * Be tolerant to typing mistakes.
 * Accented characters are still broken in nroff tables
   (see https://lists.gnu.org/archive/html/groff/2018-08/msg00000.html).
+  We could and probably should of translate most vowel-accent combinations to single precomposed codepoints,
+  but that might cause problems when copying text from the terminal.
 
 ## Installation
 
@@ -71,6 +73,21 @@ example.
 If it returns lots of errors, you should probably stay with the original database.
 Otherwise, the error messages might help in fixing/upgrading the script.
 You are of course welcome to contribute patches. :-)
+
+### FreeBSD
+
+Build-time dependencies:
+
+    pkg install gmake pkgconf groff lua52 lua52-luasql-sqlite3 lua52-luarocks wget sqlite3
+
+Installing [luautf8](https://github.com/starwing/luautf8) using LuaRocks:
+
+    luarocks52 install luautf8
+
+Building is straight forward:
+
+    gmake LUA=lua52 LUAC=luac52
+    gmake install
 
 ### NixOS
 

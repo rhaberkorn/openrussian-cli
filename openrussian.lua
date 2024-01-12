@@ -600,7 +600,14 @@ end
 
 -- Open stream only now, after no more messages have to be written to
 -- stdout/stderr.
-out_stream = assert(use_stdout and io.stdout or io.popen("man /dev/stdin", "w"))
+if use_stdout then
+	out_stream = io.stdout
+else
+	local size_stream = io.popen("stty size")
+	local columns = size_stream and size_stream:read("*a"):match("%d+ (%d+)") or 80
+	out_stream = io.popen("nroff -Kutf8 -Tutf8 -t -man -rLL="..columns.."n -rLT="..columns.."n | less -r", "w")
+end
+assert(out_stream)
 
 -- NOTE: The headers and footers shouldn't contain critical information
 -- since they might not be printed at all.
