@@ -394,22 +394,22 @@ if not verbatim then
 	-- enough to express "optional brace".
 	-- We'd probably need regexp for that.
 	cur = assert(con:execute(string.format([[
-		SELECT REPLACE(temp, "'", "") AS completions, words.* FROM words JOIN (
+		SELECT REPLACE(temp, '''', '') AS completions, words.* FROM words JOIN (
 			-- Search word might be a noun or adjective declension
-			SELECT nom||","||gen||","||dat||","||acc||","||inst||","||prep AS temp, word_id
+			SELECT nom||','||gen||','||dat||','||acc||','||inst||','||prep AS temp, word_id
 			FROM declensions
 			UNION
 			-- Search word might be a special adjective inflection
-			SELECT comparative||","||superlative||","||
-			       short_m||","||short_f||","||short_n||","||short_pl AS temp, word_id
+			SELECT comparative||','||superlative||','||
+			       short_m||','||short_f||','||short_n||','||short_pl AS temp, word_id
 			FROM adjectives
 			UNION
 			-- Search word might be a verb imperative, past form or conjugation
-			SELECT imperative_sg||","||imperative_pl||","||past_m||","||past_f||","||past_n||","||past_pl||
-			       sg1||","||sg2||","||sg3||","||pl1||","||pl2||","||pl3 AS temp, verbs.word_id
+			SELECT imperative_sg||','||imperative_pl||','||past_m||','||past_f||','||past_n||','||past_pl||
+			       sg1||','||sg2||','||sg3||','||pl1||','||pl2||','||pl3 AS temp, verbs.word_id
 			FROM verbs LEFT JOIN conjugations ON presfut_conj_id = conjugations.id
 		) ON words.id = word_id
-		WHERE LIKELY(disabled = 0) AND ","||completions||"," GLOB '*,%s,*'
+		WHERE LIKELY(disabled = 0) AND ','||completions||',' GLOB '*,%s,*'
 		ORDER BY rank
 	]], con:escape(lutf8.gsub(search_word, ACCENT, "")))))
 
@@ -417,7 +417,7 @@ if not verbatim then
 	-- It eliminates the concatenations, but has to iterate many tables redundantly.
 	-- Effectively it is twice as slow as the above query...
 	cur = assert(con:execute(string.format([[
-		SELECT REPLACE(temp, "'", "") AS completions, words.* FROM words JOIN (
+		SELECT REPLACE(temp, '''', '') AS completions, words.* FROM words JOIN (
 			-- Search word might be a noun or adjective declension
 			SELECT nom AS temp, word_id FROM declensions
 			UNION ALL
@@ -510,7 +510,7 @@ if #rows == 0 then
 		-- be optimized.
 		-- Perhaps the translations should be in their own (new) indexed table.
 		cur = assert(con:execute(string.format([[
-			SELECT %s(", "||tl||", ") AS completions, words.*
+			SELECT %s(', '||tl||', ') AS completions, words.*
 			FROM words JOIN translations ON words.id = word_id
 			WHERE LIKELY(disabled = 0) AND lang = '%s' AND completions GLOB %s('*, %s, *')
 			ORDER BY rank
