@@ -132,6 +132,14 @@ sufficient to add the following to your `~/.zshrc`:
 
     alias ru='openrussian -Lde -Len' ру='openrussian -Lde -Len'
 
+### Fish Aliases
+
+The Fish `alias` command creates local shell aliases or
+persistent aliases when invoked with the `--save` flag.
+
+    alias --save ru='openrussian -Lde -Len'
+    alias --save ру='openrussian -Lde -Len'
+
 ## Examples
 
 A simple lookup:
