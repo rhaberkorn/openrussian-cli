@@ -4,6 +4,7 @@ LUA ?= lua5.2
 LUAC ?= luac5.2
 
 BASH_COMPLETIONSDIR ?= $(shell pkg-config --variable=completionsdir bash-completion)
+FISH_COMPLETIONSDIR ?= $(shell pkg-config --variable=completionsdir fish)
 ZSH_COMPLETIONSDIR ?= $(PREFIX)/share/zsh/site-functions
 
 all : openrussian openrussian-sqlite3.db
@@ -48,6 +49,10 @@ install : openrussian openrussian-sqlite3.db \
 ifneq ($(BASH_COMPLETIONSDIR),)
 	mkdir -p $(DESTDIR)$(BASH_COMPLETIONSDIR)
 	cp openrussian-completion.bash $(DESTDIR)$(BASH_COMPLETIONSDIR)/openrussian
+endif
+ifneq ($(FISH_COMPLETIONSDIR),)
+	mkdir -p $(DESTDIR)$(FISH_COMPLETIONSDIR)
+	cp openrussian-completion.fish $(DESTDIR)$(FISH_COMPLETIONSDIR)/openrussian.fish
 endif
 ifneq ($(ZSH_COMPLETIONSDIR),)
 	mkdir -p $(DESTDIR)$(ZSH_COMPLETIONSDIR)
